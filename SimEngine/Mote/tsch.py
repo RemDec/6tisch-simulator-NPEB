@@ -31,6 +31,7 @@ import SimEngine
 
 # TODO : move constants on the right place of code
 NPEB_MIN_PDR_UNDERGO_SYNCHRO = 0.6
+NPEB_MAX_NEIGHBORS_TO_LISTEN = 3
 RDM_CHANNEL_NEW_NPEB_CELL = True
 NPEB_MAX_NBR_CYCLES = 10
 NPEB_MIN_NBR_CYCLES = 1
@@ -103,6 +104,7 @@ class Tsch(object):
         )
 
         # NPEBs
+        self.current_EB_delay = d.TSCH_MAX_EB_DELAY
         self.NPtable = NPtable(self)  # Neighbor Propositions table
         self.scheduleNPEB = scheduleNPEB(self)  # Possible cells for NPEB sending each x cycles of slotframe
         self.channel_offset_next_NPEB = None  # keep a trace of the channel offset for next NPEB
@@ -140,6 +142,7 @@ class Tsch(object):
             self.mote.sf.start()
 
             # transition: listeningForEB->active
+            self.current_EB_delay = d.TSCH_MAX_EB_DELAY  # reset for next synchro if got desynchronized
             self.engine.removeFutureEvent(      # remove previously scheduled listeningForEB cells
                 uniqueTag=(self.mote.id, u'_action_listeningForEB_cell')
             )
@@ -951,6 +954,13 @@ class Tsch(object):
 
         assert not self.getIsSync()
 
+        # this event was scheduled 1 slot ago (active listening), take into account elapsed time
+        ts_duration_ms = self.settings.tsch_slotDuration
+        self.current_EB_delay -= ts_duration_ms * 1000
+        if self.current_EB_delay < ts_duration_ms:
+            # avoid scheduling event expected at timer expiration in the current timeslot
+            self.current_EB_delay = ts_duration_ms
+
         # choose random channel
         channel = random.choice(self.hopping_sequence)
 
@@ -1381,11 +1391,11 @@ class Tsch(object):
             # the source, the EB is replaced by the new one
             self.received_eb_list[packet[u'mac'][u'srcMac']] = packet
             # receiving EB while not sync'ed
-            if len(self.received_eb_list) == d.TSCH_NUM_NEIGHBORS_TO_WAIT:
+            if len(self.received_eb_list) == NPEB_MAX_NEIGHBORS_TO_LISTEN:
                 self._perform_synchronization_bestEB()
                 self.engine.removeFutureEvent(event_tag)
             else:
-                assert len(self.received_eb_list) < d.TSCH_NUM_NEIGHBORS_TO_WAIT
+                assert len(self.received_eb_list) < NPEB_MAX_NEIGHBORS_TO_LISTEN
 
     def _action_receiveNPEB(self, packet):
 
@@ -1419,7 +1429,7 @@ class Tsch(object):
                 self.NPtable.set_bestNP_if_better(mac_sender)
 
             self.received_eb_list[mac_sender] = packet
-            if len(self.received_eb_list) == d.TSCH_NUM_NEIGHBORS_TO_WAIT:
+            if len(self.received_eb_list) == NPEB_MAX_NEIGHBORS_TO_LISTEN:
                 print self.engine.getAsn(), "- Mote", self.mote.id, "has heard enough (NP)EBs and undergoes synchro"
                 self._perform_synchronization_bestEB()
                 self.engine.removeFutureEvent(event_tag)
@@ -1448,9 +1458,9 @@ class Tsch(object):
             else:
                 # no interesting neighbor in the NPEB, wait for other EBs randomly (the event
                 # _action_listeningForEB_cell is not removed
-                print self.engine.getAsn(), "- Mote", self.mote.id, " didnt find interesting neighbor, wait other EBs in the delay"
+                print self.engine.getAsn(), "- Mote", self.mote.id, " didnt find interesting neighbor, wait other EBs in the delay", self.current_EB_delay, "seconds"
                 self.engine.scheduleIn(
-                    delay=d.TSCH_MAX_EB_DELAY,
+                    delay=self.current_EB_delay,
                     cb=self._perform_synchronization_bestEB,
                     uniqueTag=event_tag,
                     intraSlotOrder=d.INTRASLOTORDER_STACKTASKS
@@ -1987,7 +1997,7 @@ class NPtable(object):
             if infos[u'signal'] is not None:
                 return mac_neigh, -1  # already captured an EB from this neighbor
             score = 255
-            score -= infos[u'join_metric'] # TODO WTF -=
+            score -= infos[u'join_metric']
             # TODO : should also takes in account current cycle (/ score to give priority to closer announcements)
             return mac_neigh, score
 
@@ -1997,7 +2007,7 @@ class NPtable(object):
         # Look in neighbors table for NPEB possibly more interesting than current bestNP
         def compare_NPEBs_entries(curr_best, candidate):
             # TODO : may be relaxed ton consider neighbors with close value
-            return candidate[u'join_metric'] < curr_best[u'join_metric']
+            return candidate[u'join_metric'] <= curr_best[u'join_metric']
 
         next_to_listen = self.select_NP_to_listen()
         if next_to_listen:
