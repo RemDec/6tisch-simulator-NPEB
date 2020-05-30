@@ -360,6 +360,22 @@ class Tsch(object):
                 return True
         return False
 
+    def retrieve_NPs_for_ACK(self, ack_dst):
+        rank = self.mote.rpl.getDagRank()
+        if rank is None:
+            return None  # Node not already in topology
+
+        # We announce propositions only in ACK addressed to child
+        parent_ack_dst = self.engine.get_mote_by_mac_addr(ack_dst).rpl.getPreferredParent()
+        if parent_ack_dst != self.mote.get_mac_addr():
+            return None
+        propositions = {
+            u'join_metric': rank - 1,
+            u'selfNPEB':    self.scheduleNPEB.get_as_NPEB_field(),
+            u'neighbors':   self.NPtable.select_NPs_to_announce().items()
+        }
+        return propositions
+
     # minimal
 
     def add_minimal_cell(self):
@@ -744,6 +760,10 @@ class Tsch(object):
 
             if isACKed:
                 # ... which was ACKed
+
+                # As ACK is not represented by a packet, we force the Neighbors Propositions reception expected to be
+                # coupled with the ACK (so propositions come from the mote that ACKed the packet)
+                self.NPtable.feed_from_ACK(self.pktToSend)
 
                 # update schedule stats
                 if active_cell:
@@ -1930,9 +1950,14 @@ class NPtable(object):
     # --- Listening and feeding new NPEB
     def feed(self, neighbor, join_metric, scheduleNPEB, signal_strength=None):
         # Add a new entry in the table or replace current one if already exists for this neighbor (MAC)
+        old = self.NPs.get(neighbor)
+        if old is not None:
+            if not(old[u'signal'] in [None, False]):
+                signal_strength = old[u'signal']
         self.NPs[neighbor] = {u'join_metric': join_metric,
                               u'signal': signal_strength,
                               u'scheduleNPEB': scheduleNPEB}
+
         self.tsch.log(
             SimEngine.SimLog.LOG_TSCH_FEED_NPTABLE,
             {
@@ -1973,7 +1998,26 @@ class NPtable(object):
         pass
 
     def feed_from_ACK(self, ack_struct):
-        pass
+        # ACK_sctruct is actually the packet that was ACKed as there is no dedicated struct in the simulator for ACK
+        # TODO : seems to sometimes update inconcistently, only curr_cycle is decremented by one for 1 neighbor
+        mote_that_acked = self.tsch.engine.get_mote_by_mac_addr(ack_struct[u'mac'][u'dstMac'])
+        ack_NPs = mote_that_acked.tsch.retrieve_NPs_for_ACK(self.tsch.mote.get_mac_addr())
+        print self.tsch.engine.getAsn(), "- Mote", self.tsch.mote.id, "try feed from ACK NPs created", ack_NPs, "from packet", ack_struct
+        if ack_NPs is None:  # ACKing node not already in topology
+            return
+        sender_ack_infos = ack_NPs[u'selfNPEB']
+        if sender_ack_infos is not None:
+            jm = ack_NPs[u'join_metric']
+            signal = self.tsch.engine.connectivity.get_rssi(mote_that_acked.id, self.tsch.mote.id,
+                                                            self.tsch.mote.radio.channel)
+            self.feed(mote_that_acked.get_mac_addr(), jm, sender_ack_infos, signal)
+        neighbors_NPEB_infos = ack_NPs[u'neighbors']
+        if neighbors_NPEB_infos:
+            for mac_neigh, NPEB_infos in neighbors_NPEB_infos:
+                if mac_neigh != self.tsch.mote.get_mac_addr():  # Avoid placing itself in NPtable
+                    jm = NPEB_infos[u'join_metric']
+                    scheduleNPEB = NPEB_infos[u'scheduleNPEB']
+                    self.feed(mac_neigh, jm, scheduleNPEB)
 
     def set_bestNP(self, neighbor_mac):
         print self.tsch.engine.getAsn(), "- Mote", self.tsch.mote.id, " sets its bestNP to ", neighbor_mac
