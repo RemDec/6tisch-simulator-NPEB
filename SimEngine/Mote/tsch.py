@@ -34,6 +34,7 @@ NPEB_MIN_PDR_UNDERGO_SYNCHRO = 0.6
 RDM_CHANNEL_NEW_NPEB_CELL = True
 NPEB_MAX_NBR_CYCLES = 10
 NPEB_MIN_NBR_CYCLES = 1
+NPEB_JM_THRESH_NBR_CYCLES = 10
 NPEB_NON_ROOT_MIN_NBR_CYCLES = 2
 NPEB_MAX_NEIGHBORS_ANNOUNCED = 2
 
@@ -1795,12 +1796,12 @@ class scheduleNPEB(object):
         # computes a number of cycles taking in account the join metric of the mote
         # lower jm -> good place in RPL topology -> should announce NPEBs more often -> shorter interval (nbr_cycles)
         jm = self.tsch.mote.rpl.getDagRank() - 1
-        # TODO : in practice it leads to nbrcycles = 2/3 but not more, should use another mechanism
-        jm_normalized = int(jm * NPEB_MAX_NBR_CYCLES/255)
-        nbr_cycles = max(jm_normalized, NPEB_MIN_NBR_CYCLES)
-        if not self.tsch.mote.dagRoot:
-            nbr_cycles = max(nbr_cycles, NPEB_NON_ROOT_MIN_NBR_CYCLES)
-        return nbr_cycles
+        if self.tsch.mote.dagRoot:
+            nbr_cycles = NPEB_MIN_NBR_CYCLES
+        else:
+            nbr_cycles = NPEB_NON_ROOT_MIN_NBR_CYCLES
+        nbr_cycles += int(jm / NPEB_JM_THRESH_NBR_CYCLES)
+        return min(NPEB_MAX_NBR_CYCLES, nbr_cycles)
 
     def get_best_cycle_curr_offset(self, nbr_cycles):
         # consider NPtable to see which neighbors announce NPEB every nbr_cycles cycles and their current cycle,
@@ -1986,7 +1987,7 @@ class NPtable(object):
             if infos[u'signal'] is not None:
                 return mac_neigh, -1  # already captured an EB from this neighbor
             score = 255
-            score += infos[u'join_metric']
+            score -= infos[u'join_metric'] # TODO WTF -=
             # TODO : should also takes in account current cycle (/ score to give priority to closer announcements)
             return mac_neigh, score
 
@@ -2021,7 +2022,8 @@ class NPtable(object):
         # retrieve what seems to be the best known neighbors to announce in a NPEB
         def score_announce((mac_neigh, infos)):
             # TODO : may take in account the remaining current cycles to announce neighbors close to emit NPEB
-            score = 100
+            score = 255
+            score -= infos[u'join_metric']
             if mac_neigh == self.tsch.mote.rpl.getPreferredParent():
                 score *= 2
             return mac_neigh, score
@@ -2058,13 +2060,13 @@ class NPtable(object):
         lenSF0 = self.tsch.get_slotframe(0).length
         assert after_timeslot < lenSF0
         occupied = self.get_occupied_NPEBcells()
-        used_ts_SF0 = self.tsch.get_busy_slots()
+        used_ts_SF0 = self.tsch.get_busy_slots()  # TODO : take into account neighbors schedule
         for ts_offset in range(after_timeslot, lenSF0):  # Exclude first slot
             if ts_offset in used_ts_SF0:
                 continue  # already used by this node itself
             used_channels = range(0, self.tsch.settings.phy_numChans)
             if RDM_CHANNEL_NEW_NPEB_CELL:
-                available_ch = list(set(used_channels) - set(occupied + add_excluded_cells))
+                available_ch = list(set(used_channels) - set(occupied + add_excluded_cells)) # TODO : extract chan offset
                 if not available_ch:
                     return ts_offset, random.choice(used_channels)
                 else:
