@@ -285,7 +285,7 @@ class Tsch(object):
         # NPEBs should not be emitted anymore, stop decreasing cycles dropping the related event
         self.engine.removeFutureEvent((self.mote.id, u'_action_decrease_cycles_NPEB'))
         self.scheduleNPEB.clear()
-        self.NPtable.clean()
+        self.NPtable.clear()
 
     def schedule_next_listeningForEB_cell(self):
 
@@ -615,7 +615,7 @@ class Tsch(object):
         if dst_mac_addr is None:
             if self.scheduleNPEB.is_cell_registered(cell):
                 # it is a scheduled cell to send NPEB this current cycle
-                # TODO : we bypass self.mote.clear_to_send_EBs_DATA() to avoid interaction with specific SF
+                # we bypass self.mote.clear_to_send_EBs_DATA() to avoid interaction with specific SF
                 packet_to_send = self._create_NPEB()
             elif (
                     len(self.txQueue) == 0
@@ -2088,14 +2088,14 @@ class NPtable(object):
         return neighbors_for_NPEB
 
     # --- Others
-    def clean(self):
+    def clear(self):
         self.NPs = {}
         self.bestNP = None
 
     def clean_unreceived_NPEB(self):
         clean = {}
         for neighbor, infos in self.NPs.items():
-            if infos.get(u'signal') is not None:
+            if infos.get(u'signal') is not False:
                 clean[neighbor] = infos
         self.NPs = clean
 
@@ -2113,14 +2113,25 @@ class NPtable(object):
         # considering busy slots by itself and neighbors, returns first free cell where no NPEB is announced
         lenSF0 = self.tsch.get_slotframe(0).length
         assert after_timeslot < lenSF0
+
+        try:
+            getattr(self.tsch.mote.sf, "_compute_autonomous_cell", None)
+            mote_mac = self.tsch.mote.get_mac_addr()
+            reserved_cell = self.tsch.mote.sf._compute_autonomous_cell(mote_mac)
+            add_excluded_cells.append(reserved_cell)
+        except (AttributeError, TypeError):
+            pass
         occupied = self.get_occupied_NPEBcells()
-        used_ts_SF0 = self.tsch.get_busy_slots()  # TODO : take into account neighbors schedule
+        used_ts_SF0 = self.tsch.get_busy_slots()
+        excluded_cells = occupied + add_excluded_cells
+        all_used_ts = used_ts_SF0 + [ts for ts, _ in excluded_cells]
         for ts_offset in range(after_timeslot, lenSF0):  # Exclude first slot
-            if ts_offset in used_ts_SF0:
+            if ts_offset in all_used_ts:
                 continue  # already used by this node itself
             used_channels = range(0, self.tsch.settings.phy_numChans)
             if RDM_CHANNEL_NEW_NPEB_CELL:
-                available_ch = list(set(used_channels) - set(occupied + add_excluded_cells)) # TODO : extract chan offset
+                used_ch_for_ts = [ch for ts, ch in excluded_cells if ts == ts_offset]
+                available_ch = list(set(used_channels) - set(used_ch_for_ts))
                 if not available_ch:
                     return ts_offset, random.choice(used_channels)
                 else:
