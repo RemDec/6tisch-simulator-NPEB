@@ -31,13 +31,14 @@ import SimEngine
 
 # TODO : move constants on the right place of code
 NPEB_MIN_PDR_UNDERGO_SYNCHRO = 0.6
+NPEB_MAX_JM_UNDERGO_SYNCHRO = 7
 NPEB_MAX_NEIGHBORS_TO_LISTEN = 3
 RDM_CHANNEL_NEW_NPEB_CELL = True
 NPEB_MAX_NBR_CYCLES = 10
 NPEB_MIN_NBR_CYCLES = 1
 NPEB_JM_THRESH_NBR_CYCLES = 10
 NPEB_NON_ROOT_MIN_NBR_CYCLES = 2
-NPEB_MAX_NEIGHBORS_ANNOUNCED = 2
+NPEB_MAX_NEIGHBORS_ANNOUNCED = 3
 
 
 class Tsch(object):
@@ -348,16 +349,26 @@ class Tsch(object):
         bestNP_infos = self.NPtable.get_bestNP_entry()
         # Decisional process to know whether should stop searching best neighbor and undergo synchronization
         # with the current best found
+
         def is_pdr_sufficient():
             pdr = self.engine.connectivity._rssi_to_pdr(bestNP_infos[u'signal'])
             return pdr > NPEB_MIN_PDR_UNDERGO_SYNCHRO
 
-        if bestNP_infos[u'join_metric'] == 0 and is_pdr_sufficient():
-            # it is root, should synchro with it !
+        def is_jm_sufficient():
+            return bestNP_infos[u'join_metric'] <= NPEB_MAX_JM_UNDERGO_SYNCHRO
+
+        if not is_pdr_sufficient():
+            return False
+
+        if bestNP_infos[u'join_metric'] == 0:  # it is root, should synchro with it !
             return True
-        if (not self.NPtable.is_still_neighbor_to_listen()) and is_pdr_sufficient():
-            if len(self.NPtable) >= 2:  # should have listened to more than only one neighbor
-                return True
+
+        if not is_jm_sufficient():
+            return False
+
+        if len(self.NPtable) >= 2:  # should have listened to more than only one neighbor (not only the bestNP itself)
+            if not self.NPtable.is_still_neighbor_to_listen():
+                    return True
         return False
 
     def retrieve_NPs_for_ACK(self, ack_dst):
@@ -2037,12 +2048,17 @@ class NPtable(object):
 
     def select_NP_to_listen(self):
         # retrieve what seems the best neighbor not listened yet following diverse criteria
+        farthest_cycle = self.get_cycles_farthest_announce()
+
         def score_listen((mac_neigh, infos)):
             if infos[u'signal'] is not None:
-                return mac_neigh, -1  # already captured an EB from this neighbor
+                return mac_neigh, -1  # already captured or tried to an EB from this neighbor
             score = 255
             score -= infos[u'join_metric']
-            # TODO : should also takes in account current cycle (/ score to give priority to closer announcements)
+            # a closest announcement has a priority for same metric
+            # score += farthest_cycle - infos[u'scheduleNPEB'][u'curr_cycle']
+            # if infos[u'join_metric'] == 0:  # DAG root
+            #     score *= 2
             return mac_neigh, score
 
         return self.select_NPs(lambda info_neigh: score_listen(info_neigh), list_macs=True)
@@ -2074,11 +2090,14 @@ class NPtable(object):
     # --- Announcing NPEB to neighbors
     def select_NPs_to_announce(self):
         # retrieve what seems to be the best known neighbors to announce in a NPEB
+        farthest_cycle = self.get_cycles_farthest_announce()
+
         def score_announce((mac_neigh, infos)):
-            # TODO : may take in account the remaining current cycles to announce neighbors close to emit NPEB
             score = 255
             score -= infos[u'join_metric']
-            if mac_neigh == self.tsch.mote.rpl.getPreferredParent():
+            # a closest announcement has a priority for same metric
+            # score += farthest_cycle - infos[u'scheduleNPEB'][u'curr_cycle']
+            if mac_neigh == self.tsch.mote.rpl.getPreferredParent(): #or infos[u'join_metric'] == 0:
                 score *= 2
             return mac_neigh, score
 
@@ -2139,6 +2158,12 @@ class NPtable(object):
             for ch_offset in used_channels:
                 if not((ts_offset, ch_offset) in occupied + add_excluded_cells):
                     return ts_offset, ch_offset
+
+    def get_cycles_farthest_announce(self):
+        farthest = -1
+        for neigh_infos in self.NPs.values():
+            farthest = max(neigh_infos[u'scheduleNPEB'][u'curr_cycle'], farthest)
+        return None if farthest == -1 else farthest
 
     def __len__(self):
         return len(self.NPs)
