@@ -40,7 +40,7 @@ NPEB_JM_THRESH_NBR_CYCLES = 10
 NPEB_NON_ROOT_MIN_NBR_CYCLES = 2
 NPEB_MAX_NEIGHBORS_ANNOUNCED = 3
 
-DELAY_LOG_AFTER_EB = 60
+DELAY_LOG_AFTER_EB = 120
 
 
 class Tsch(object):
@@ -271,7 +271,7 @@ class Tsch(object):
 
     def startSendingEBs(self):
         self.iAmSendingEBs = True
-        print self.engine.getAsn(), "- Mote", self.mote.id, " starts sending EBs and registers a NPEB cell"
+        # print self.engine.getAsn(), "- Mote", self.mote.id, " starts sending EBs and registers a NPEB cell"
         self.scheduleNPEB.clear()
         self.scheduleNPEB.auto_register_new_cell()
         if self.mote.dagRoot:
@@ -301,7 +301,7 @@ class Tsch(object):
 
     def stopSendingEBs(self):
         self.iAmSendingEBs = False
-        print self.engine.getAsn(), "- Mote", self.mote.id, " stopped sending EBs and removes registered NPEB cells :", self.scheduleNPEB.NPEBcells
+        # print self.engine.getAsn(), "- Mote", self.mote.id, " stopped sending EBs and removes registered NPEB cells :", self.scheduleNPEB.NPEBcells
         # NPEBs should not be emitted anymore, stop decreasing cycles dropping the related event
         self.engine.removeFutureEvent((self.mote.id, u'_action_decrease_cycles_NPEB'))
         self.scheduleNPEB.clear()
@@ -353,7 +353,7 @@ class Tsch(object):
                 u'target_cell': scheduleNPEB[u'cell']
             }
         )
-        print self.engine.getAsn(), "- Mote", self.mote.id, " schedules waiting NPEB in engine cell", scheduleNPEB[u'cell'], " resulting in ASN", asn_timeslot_cell
+        # print self.engine.getAsn(), "- Mote", self.mote.id, " schedules waiting NPEB in engine cell", scheduleNPEB[u'cell'], " resulting in ASN", asn_timeslot_cell
         # schedule at ASN considering cycles to be elapsed until this particular EB
         self.engine.scheduleAtAsn(
             asn              = asn_timeslot_cell,
@@ -1045,7 +1045,7 @@ class Tsch(object):
 
         assert not self.getIsSync()
         assert self.channel_offset_next_NPEB is not None
-        print self.engine.getAsn(), "- Mote", self.mote.id, " wakes up to listen NPEB from determined neighbor at cell", self.engine.getAsn() % self.get_slotframe(0).length, ",", self.channel_offset_next_NPEB
+        # print self.engine.getAsn(), "- Mote", self.mote.id, " wakes up to listen NPEB from determined neighbor at cell", self.engine.getAsn() % self.get_slotframe(0).length, ",", self.channel_offset_next_NPEB
         # start listening
         channel_NPEB = self._get_physical_channel_from_offset(self.channel_offset_next_NPEB)
         self.mote.radio.startRx(channel_NPEB)
@@ -1099,12 +1099,12 @@ class Tsch(object):
             self.received_eb_list,
             key=lambda x: self.received_eb_list[x][u'mac'][u'join_metric']
         )
-        print self.engine.getAsn(), "- Mote", self.mote.id, "performs synchro considering all EBs jm, selected", clock_source_mac_addr
+        # print self.engine.getAsn(), "- Mote", self.mote.id, "performs synchro considering all EBs jm, selected", clock_source_mac_addr
         self._perform_synchronization(clock_source_mac_addr)
 
     def _perform_synchronization_bestNP(self):
         assert self.NPtable.bestNP
-        print self.engine.getAsn(), "- Mote", self.mote.id, "performs synchro considering best NP :", self.NPtable.bestNP
+        # print self.engine.getAsn(), "- Mote", self.mote.id, "performs synchro considering best NP :", self.NPtable.bestNP
         self._perform_synchronization(self.NPtable.bestNP)
 
     def _action_decrease_cycles_NPEB(self):
@@ -1420,7 +1420,7 @@ class Tsch(object):
                     u'packet':   newNPEB,
                 }
             )
-        print self.engine.getAsn(), "- Mote", self.mote.id, "crafted new NPEB (ASN", self.engine.getAsn(), ") :", newNPEB
+        # print self.engine.getAsn(), "- Mote", self.mote.id, "crafted new NPEB (ASN", self.engine.getAsn(), ") :", newNPEB
         return newNPEB
 
     def _action_receiveEB(self, packet):
@@ -1474,7 +1474,7 @@ class Tsch(object):
             }
         )
 
-        print self.engine.getAsn(), "- Mote", self.mote.id, " received NPEB", packet
+        # print self.engine.getAsn(), "- Mote", self.mote.id, " received NPEB", packet
         # feed NPEB table even if already synced or root to possibly learn and announce more neighbors in future NPEBs
         self.NPtable.feed_from_NPEB(packet)
 
@@ -1494,13 +1494,13 @@ class Tsch(object):
 
             self.received_eb_list[mac_sender] = packet
             if len(self.received_eb_list) == NPEB_MAX_NEIGHBORS_TO_LISTEN:
-                print self.engine.getAsn(), "- Mote", self.mote.id, "has heard enough (NP)EBs and undergoes synchro"
+                # print self.engine.getAsn(), "- Mote", self.mote.id, "has heard enough (NP)EBs and undergoes synchro"
                 self._perform_synchronization_bestEB()
                 self.engine.removeFutureEvent(event_tag)
                 return
 
             if self.should_undergo_synchro_with_bestNP():
-                print self.engine.getAsn(), "- Mote", self.mote.id, " decided to undergo synchro with its bestNP ", self.NPtable.bestNP, " :", self.NPtable.get_bestNP_entry()
+                # print self.engine.getAsn(), "- Mote", self.mote.id, " decided to undergo synchro with its bestNP ", self.NPtable.bestNP, " :", self.NPtable.get_bestNP_entry()
                 self.engine.removeFutureEvent(event_tag)
                 self.engine.removeFutureEvent((self.mote.id, u'_action_listeningForEB_cell'))
                 self._perform_synchronization_bestNP()
@@ -1512,7 +1512,7 @@ class Tsch(object):
 
             if next_neighbor_to_listen is not None:
                 # sleep until the NPEB announcement cell by this interesting neighbor, cancel timer EB delay
-                print self.engine.getAsn(), "- Mote", self.mote.id, " found interesting NPEB entry to listen", next_neighbor_to_listen, "scheduleNPEB", scheduleNPEB
+                # print self.engine.getAsn(), "- Mote", self.mote.id, " found interesting NPEB entry to listen", next_neighbor_to_listen, "scheduleNPEB", scheduleNPEB
                 self.engine.removeFutureEvent(event_tag)
                 self.engine.removeFutureEvent((self.mote.id, u'_action_listeningForEB_cell'))
                 # mark that we will listen to this neighbor to keep a trace of neighbors listened
@@ -1522,7 +1522,7 @@ class Tsch(object):
             else:
                 # no interesting neighbor in the NPEB, wait for other EBs randomly (the event
                 # _action_listeningForEB_cell is not removed
-                print self.engine.getAsn(), "- Mote", self.mote.id, " didnt find interesting neighbor, wait other EBs in the delay", self.current_EB_delay, "seconds"
+                # print self.engine.getAsn(), "- Mote", self.mote.id, " didnt find interesting neighbor, wait other EBs in the delay", self.current_EB_delay, "seconds"
                 self.engine.scheduleIn(
                     delay=self.current_EB_delay,
                     cb=self._perform_synchronization_bestEB,
@@ -1834,7 +1834,7 @@ class scheduleNPEB(object):
 
         self.NPEBcells[(slot_offset, channel_offset)] = {u'curr_cycle': curr_cycle,
                                                          u'nbr_cycles': nbr_cycles}
-        print self.tsch.engine.getAsn(), "- Mote", self.tsch.mote.id, "registered new NPEB cell, schedule is now ", self.NPEBcells
+        # print self.tsch.engine.getAsn(), "- Mote", self.tsch.mote.id, "registered new NPEB cell, schedule is now ", self.NPEBcells
         self.tsch.log(
             SimEngine.SimLog.LOG_TSCH_REGISTER_NPEB_CELL,
             {
@@ -1906,7 +1906,7 @@ class scheduleNPEB(object):
                 cycle_infos[u'curr_cycle'] = cycle_infos[u'nbr_cycles']
             elif curr_cycle == 1:
                 cycle_infos[u'curr_cycle'] = 0  # A NPEB announcement cell will be set for this current cycle
-                print self.tsch.engine.getAsn(), "- Mote", self.tsch.mote.id, "has a cycle counter arriving to 0 and schedules an NPEB cell", cell
+                # print self.tsch.engine.getAsn(), "- Mote", self.tsch.mote.id, "has a cycle counter arriving to 0 and schedules an NPEB cell", cell
                 self.schedule_NPEB_cell_curr_cycle(cell)
             else:
                 cycle_infos[u'curr_cycle'] = curr_cycle - 1
@@ -2046,7 +2046,7 @@ class NPtable(object):
         # TODO : seems to sometimes update inconcistently, only curr_cycle is decremented by one for 1 neighbor
         mote_that_acked = self.tsch.engine.get_mote_by_mac_addr(ack_struct[u'mac'][u'dstMac'])
         ack_NPs = mote_that_acked.tsch.retrieve_NPs_for_ACK(self.tsch.mote.get_mac_addr())
-        print self.tsch.engine.getAsn(), "- Mote", self.tsch.mote.id, "try feed from ACK NPs created", ack_NPs, "from packet", ack_struct
+        # print self.tsch.engine.getAsn(), "- Mote", self.tsch.mote.id, "try feed from ACK NPs created", ack_NPs, "from packet", ack_struct
         if ack_NPs is None:  # ACKing node not already in topology
             return
         sender_ack_infos = ack_NPs[u'selfNPEB']
@@ -2064,7 +2064,7 @@ class NPtable(object):
                     self.feed(mac_neigh, jm, scheduleNPEB)
 
     def set_bestNP(self, neighbor_mac):
-        print self.tsch.engine.getAsn(), "- Mote", self.tsch.mote.id, " sets its bestNP to ", neighbor_mac
+        # print self.tsch.engine.getAsn(), "- Mote", self.tsch.mote.id, " sets its bestNP to ", neighbor_mac
         self.bestNP = neighbor_mac
 
     def get_bestNP_entry(self):

@@ -75,7 +75,8 @@ def main(options):
                 for run in kpis.values():
                     for mote in run.values():
                         if key in mote:
-                            data[curr_combination].append(mote[key])
+                            if mote[key] is not None:
+                                data[curr_combination].append(mote[key])
         if key in ['sync_time_s', 'join_time_s', 'joinRPL_time_s']:
             phases_stats['times'][key] = data[data.keys()[0]]
         elif key in ['charge_synched', 'charge_joined', 'charge_joinedRPL', 'charge_afterEB']:
@@ -114,7 +115,7 @@ def plot_phase_times_boxplots(phase_times, subfolder):
                      order=[labels[t] for t in stat_names[::-1]],
                      palette=['OrangeRed', 'Orange', 'Gold'],
                      notch=False, meanline=True, showmeans=True)
-    ax.set_title("Time elapsed between steps of join process for all nodes")
+    ax.set_title("Time elapsed at steps of join process for all nodes")
     # x axis
     ax.set_xlabel("Time (s)")
 
@@ -139,7 +140,7 @@ def plot_phase_charges_boxplots(phase_charges, subfolder):
                      palette=['Tomato', 'OrangeRed', 'Orange', 'Gold'],
                      order=[labels[t] for t in stat_names[::-1]],
                      notch=False, meanline=True, showmeans=True)
-    ax.set_title("Charge consumed between steps of join process for all nodes")
+    ax.set_title("Charge consumed at steps of join process for all nodes")
     # x axis
     ax.set_xlabel("Charge (mC)")
 
@@ -158,6 +159,7 @@ def plot_histogram_hops(data, subfolder):
         ax.yaxis.set_major_locator(MaxNLocator(integer=True))
         ax.grid(axis="y")
         # x axis
+        ax.set_xlabel("Number of hops")
         ax.set_xticks(list(set(values)))
         ax.set_xlim(left=min(values)-0.5, right=max(values)+0.5)
         ax.xaxis.set_tick_params(which='minor', bottom=False)
