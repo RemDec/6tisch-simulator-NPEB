@@ -40,6 +40,8 @@ NPEB_JM_THRESH_NBR_CYCLES = 10
 NPEB_NON_ROOT_MIN_NBR_CYCLES = 2
 NPEB_MAX_NEIGHBORS_ANNOUNCED = 3
 
+DELAY_LOG_AFTER_EB = 60
+
 
 class Tsch(object):
 
@@ -111,6 +113,7 @@ class Tsch(object):
         self.channel_offset_next_NPEB = None  # keep a trace of the channel offset for next NPEB
         # starting to decrease cycles counters from start ensures keeping consistent state
         self.schedule_next_decr_cycles_NPEB()
+        self.firstEBauthorization = False  # used to log stats 1 min after (NP)EB announces allowed
     #======================== public ==========================================
 
     # getters/setters
@@ -124,10 +127,17 @@ class Tsch(object):
 
         if self.isSync:
             # log
+            # NPEB_modif
             self.log(
                 SimEngine.SimLog.LOG_TSCH_SYNCED,
                 {
-                    "_mote_id":   self.mote.id,
+                    u'_mote_id':   self.mote.id,
+                    u'idle_listen': self.mote.radio.stats[u'idle_listen'],
+                    u'tx_data_rx_ack': self.mote.radio.stats[u'tx_data_rx_ack'],
+                    u'tx_data': self.mote.radio.stats[u'tx_data'],
+                    u'rx_data_tx_ack': self.mote.radio.stats[u'rx_data_tx_ack'],
+                    u'rx_data': self.mote.radio.stats[u'rx_data'],
+                    u'sleep': self.mote.radio.stats[u'sleep']
                 }
             )
 
@@ -266,6 +276,15 @@ class Tsch(object):
         self.scheduleNPEB.auto_register_new_cell()
         if self.mote.dagRoot:
             self.scheduleNPEB.auto_register_new_cell()  # start with 2 cells to boost startup
+        if self.firstEBauthorization is False:
+            self.firstEBauthorization = True
+            self.engine.scheduleIn(
+                delay=DELAY_LOG_AFTER_EB,
+                cb=self._log_radio_stats,
+                uniqueTag=(self.mote.id, u'_log_radio_stats'),
+                intraSlotOrder=d.INTRASLOTORDER_STARTSLOT,
+            )
+
 
     def schedule_next_decr_cycles_NPEB(self):
         # At each slotframe iteration, decrease referenced current cycle assigned to each NPEB cell
@@ -977,6 +996,20 @@ class Tsch(object):
     #======================== private ==========================================
 
     # listeningForEB
+
+    def _log_radio_stats(self):
+        self.log(
+            SimEngine.SimLog.LOG_CHARGE_AFTER_SENDING_EB,
+            {
+                u'_mote_id': self.mote.id,
+                u'idle_listen': self.mote.radio.stats[u'idle_listen'],
+                u'tx_data_rx_ack': self.mote.radio.stats[u'tx_data_rx_ack'],
+                u'tx_data': self.mote.radio.stats[u'tx_data'],
+                u'rx_data_tx_ack': self.mote.radio.stats[u'rx_data_tx_ack'],
+                u'rx_data': self.mote.radio.stats[u'rx_data'],
+                u'sleep': self.mote.radio.stats[u'sleep']
+            }
+        )
 
     def _action_listeningForEB_cell(self):
         """

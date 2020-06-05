@@ -24,6 +24,7 @@ from matplotlib.ticker import MaxNLocator
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns  # NPEB_modif
+import pandas as pd
 
 # ============================ defines ========================================
 
@@ -35,8 +36,12 @@ KPIS = [
     'sync_time_s',
     'join_time_s',
     'upstream_num_lost',
-    'first_hop',  #NPEB_modif
-    'charge_joined'
+    'first_hop',  # vv NPEB_modif vv
+    'joinRPL_time_s',
+    'charge_synched',
+    'charge_joined',
+    'charge_joinedRPL',
+    'charge_afterEB'
 ]
 
 # ============================ main ===========================================
@@ -51,6 +56,8 @@ def main(options):
         [os.path.join(options.inputfolder, x) for x in os.listdir(options.inputfolder)]
     )
     subfolder = max(subfolders, key=os.path.getmtime)
+
+    phases_stats = {'times': {}, 'charges': {}}
 
     for key in options.kpis:
         # load data
@@ -69,7 +76,10 @@ def main(options):
                     for mote in run.values():
                         if key in mote:
                             data[curr_combination].append(mote[key])
-
+        if key in ['sync_time_s', 'join_time_s', 'joinRPL_time_s']:
+            phases_stats['times'][key] = data[data.keys()[0]]
+        elif key in ['charge_synched', 'charge_joined', 'charge_joinedRPL', 'charge_afterEB']:
+            phases_stats['charges'][key] = data[data.keys()[0]]
         # plot
         try:
             if key in ['lifetime_AA_years', 'latencies']:
@@ -83,9 +93,58 @@ def main(options):
 
         except TypeError as e:
             print("Cannot create a plot for {0}: {1}.".format(key, e))
+    plot_phase_times_boxplots(phases_stats['times'], subfolder)
+    plot_phase_charges_boxplots(phases_stats['charges'], subfolder)
     print("Plots are saved in the {0} folder.".format(subfolder))
 
 # =========================== helpers =========================================
+
+def plot_phase_times_boxplots(phase_times, subfolder):
+    stat_names = ['sync_time_s', 'join_time_s', 'joinRPL_time_s']
+    labels = {stat_names[0]: 'Synchro',
+              stat_names[1]: 'SecJoin',
+              stat_names[2]: 'RPLjoin'}
+    data = {'phase': [], 'value': []}
+    for phase, vals in phase_times.items():
+        data['phase'].extend([labels[phase]] * len(vals))
+        data['value'].extend(vals)
+
+    df = pd.DataFrame(data)
+    ax = sns.boxplot(y='phase', x='value', data=data, orient='h', linewidth=1,
+                     order=[labels[t] for t in stat_names[::-1]],
+                     palette=['OrangeRed', 'Orange', 'Gold'],
+                     notch=False, meanline=True, showmeans=True)
+    ax.set_title("Time elapsed between steps of join process for all nodes")
+    # x axis
+    ax.set_xlabel("Time (s)")
+
+    savefig(subfolder, "phase_times")
+    plt.clf()
+
+
+def plot_phase_charges_boxplots(phase_charges, subfolder):
+    from SimEngine.Mote.tsch import DELAY_LOG_AFTER_EB
+    stat_names = ['charge_synched', 'charge_joined', 'charge_joinedRPL', 'charge_afterEB']
+    labels = {stat_names[0]: 'Synchro',
+              stat_names[1]: 'SecJoin',
+              stat_names[2]: 'RPLjoin',
+              stat_names[3]: str(DELAY_LOG_AFTER_EB) + 's after EB'}
+    data = {'phase': [], 'value': []}
+    for phase, vals in phase_charges.items():
+        data['phase'].extend([labels[phase]] * len(vals))
+        data['value'].extend(map(lambda microC: microC/1000, vals))
+
+    df = pd.DataFrame(data)
+    ax = sns.boxplot(y='phase', x='value', data=data, orient='h', linewidth=1,
+                     palette=['Tomato', 'OrangeRed', 'Orange', 'Gold'],
+                     order=[labels[t] for t in stat_names[::-1]],
+                     notch=False, meanline=True, showmeans=True)
+    ax.set_title("Charge consumed between steps of join process for all nodes")
+    # x axis
+    ax.set_xlabel("Charge (mC)")
+
+    savefig(subfolder, "phase_charges")
+    plt.clf()
 
 
 #NPEB_modif
@@ -112,7 +171,7 @@ def plot_histogram_charge_joined(data, subfolder):
     for k, values in data.items():
         values = map(lambda microC: microC/1000, values)
         ax = sns.distplot(values, bins=20, kde=False, hist_kws={"align": 'mid'}, rug=True)
-        ax.set_title("Distribution of used charge values at joining achievement")
+        ax.set_title("Distribution of consumed charge values at joining achievement")
         ax.minorticks_on()
         # y axis
         ax.yaxis.set_major_locator(MaxNLocator(integer=True))

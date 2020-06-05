@@ -61,6 +61,8 @@ LOG_RPL_DIS_TX                    = {u'type': u'rpl.dis.tx',                u'ke
 LOG_RPL_DIS_RX                    = {u'type': u'rpl.dis.rx',                u'keys': [u'_mote_id',u'packet']}
 LOG_RPL_CHURN                     = {u'type': u'rpl.churn',                 u'keys': [u'_mote_id',u'rank',u'preferredParent']}
 LOG_RPL_LOCAL_REPAIR              = {u'type': u'rpl.local_repair',          u'keys': [u'_mote_id']}
+# NPEB_modif
+LOG_RPL_JOINED                    = {u'type': u'rpl.joined',                u'keys': [u'_mote_id', u'idle_listen', u'tx_data_rx_ack', u'tx_data', u'rx_data_tx_ack', u'rx_data', u'sleep']}
 
 # === 6LoWPAN
 LOG_SIXLOWPAN_PKT_TX              = {u'type': u'sixlowpan.pkt.tx',          u'keys': [u'_mote_id',u'packet']}
@@ -81,7 +83,9 @@ LOG_SIXP_TRANSACTION_TIMEOUT      = {u'type': u'sixp.timeout',              u'ke
 LOG_SIXP_TRANSACTION_ABORTED      = {u'type': u'sixp.abort',                u'keys': [u'_mote_id',u'srcMac',u'dstMac',u'seqNum', u'cmd']}
 
 # === tsch
-LOG_TSCH_SYNCED                   = {u'type': u'tsch.synced',               u'keys': [u'_mote_id']}
+# NPEB_modif
+LOG_CHARGE_AFTER_SENDING_EB       = {u'type': u'tsch.aftereb',              u'keys': [u'_mote_id', u'idle_listen', u'tx_data_rx_ack', u'tx_data', u'rx_data_tx_ack', u'rx_data', u'sleep']}
+LOG_TSCH_SYNCED                   = {u'type': u'tsch.synced',               u'keys': [u'_mote_id', u'idle_listen', u'tx_data_rx_ack', u'tx_data', u'rx_data_tx_ack', u'rx_data', u'sleep']}
 LOG_TSCH_DESYNCED                 = {u'type': u'tsch.desynced',             u'keys': [u'_mote_id']}
 LOG_TSCH_EB_TX                    = {u'type': u'tsch.eb.tx',                u'keys': [u'_mote_id',u'packet']}
 LOG_TSCH_NPEB_TX                  = {u'type': u'tsch.npeb.tx',              u'keys': [u'_mote_id',u'packet']}

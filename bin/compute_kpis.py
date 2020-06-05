@@ -56,8 +56,22 @@ def init_mote():
         'charge': None,
         'lifetime_AA_years': None,
         'avg_current_uA': None,
-        'charge_joined': None
+        'charge_synched': None,  # v NPEB_modif v
+        'charge_joined': None,
+        'charge_joinedRPL': None,
+        'charge_afterEB': None,
+        'joinRPL_time_s': None
     }
+
+
+def compute_charge(logline_dict):
+    charge = logline_dict['idle_listen'] * d.CHARGE_IdleListen_uC
+    charge += logline_dict['tx_data_rx_ack'] * d.CHARGE_TxDataRxAck_uC
+    charge += logline_dict['rx_data_tx_ack'] * d.CHARGE_RxDataTxAck_uC
+    charge += logline_dict['tx_data'] * d.CHARGE_TxData_uC
+    charge += logline_dict['rx_data'] * d.CHARGE_RxData_uC
+    charge += logline_dict['sleep'] * d.CHARGE_Sleep_uC
+    return charge
 
 # =========================== KPIs ============================================
 
@@ -104,6 +118,10 @@ def kpis_all(inputfile):
 
             allstats[run_id][mote_id]['sync_asn']  = asn
             allstats[run_id][mote_id]['sync_time_s'] = asn*file_settings['tsch_slotDuration']
+            # NPEB_modif
+            charge = compute_charge(logline)
+            if allstats[run_id][mote_id]['charge_synched'] is None:
+                allstats[run_id][mote_id]['charge_synched'] = charge
 
         elif logline['_type'] == SimLog.LOG_SECJOIN_JOINED['type']:
             # joined
@@ -120,14 +138,44 @@ def kpis_all(inputfile):
             allstats[run_id][mote_id]['join_asn']  = asn
             allstats[run_id][mote_id]['join_time_s'] = asn*file_settings['tsch_slotDuration']
             # NPEB_modif
-            charge =  logline['idle_listen'] * d.CHARGE_IdleListen_uC
-            charge += logline['tx_data_rx_ack'] * d.CHARGE_TxDataRxAck_uC
-            charge += logline['rx_data_tx_ack'] * d.CHARGE_RxDataTxAck_uC
-            charge += logline['tx_data'] * d.CHARGE_TxData_uC
-            charge += logline['rx_data'] * d.CHARGE_RxData_uC
-            charge += logline['sleep'] * d.CHARGE_Sleep_uC
+            charge =  compute_charge(logline)
             if allstats[run_id][mote_id]['charge_joined'] is None:
                 allstats[run_id][mote_id]['charge_joined'] = charge
+
+        elif logline['_type'] == SimLog.LOG_RPL_JOINED['type']:  # NPEB_modif
+            # joined RPL
+
+            # shorthands
+            mote_id    = logline['_mote_id']
+
+            # only log non-dagRoot join times
+            if mote_id == DAGROOT_ID:
+                continue
+
+            # populate
+            assert allstats[run_id][mote_id]['sync_asn'] is not None
+
+            charge =  compute_charge(logline)
+            if allstats[run_id][mote_id]['charge_joinedRPL'] is None:
+                allstats[run_id][mote_id]['charge_joinedRPL'] = charge
+                allstats[run_id][mote_id]['joinRPL_time_s'] = asn * file_settings['tsch_slotDuration']
+
+        elif logline['_type'] == SimLog.LOG_CHARGE_AFTER_SENDING_EB['type']:  # NPEB_modif
+            # after a determined time node was allowed to emit (NP)EBs
+
+            # shorthands
+            mote_id    = logline['_mote_id']
+
+            # only log non-dagRoot join times
+            if mote_id == DAGROOT_ID:
+                continue
+
+            # populate
+            assert allstats[run_id][mote_id]['sync_asn'] is not None
+
+            charge =  compute_charge(logline)
+            if allstats[run_id][mote_id]['charge_afterEB'] is None:
+                allstats[run_id][mote_id]['charge_afterEB'] = charge
 
         elif logline['_type'] == SimLog.LOG_APP_TX['type']:
             # packet transmission
