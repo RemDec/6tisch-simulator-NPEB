@@ -54,10 +54,17 @@ class SecJoin(object):
 
     def setIsJoined(self, value):
         if value:
+            # NPEB_modif : get charge at joining
             self.log(
                 SimEngine.SimLog.LOG_SECJOIN_JOINED,
                 {
                     u'_mote_id': self.mote.id,
+                    u'idle_listen': self.mote.radio.stats[u'idle_listen'],
+                    u'tx_data_rx_ack': self.mote.radio.stats[u'tx_data_rx_ack'],
+                    u'tx_data': self.mote.radio.stats[u'tx_data'],
+                    u'rx_data_tx_ack': self.mote.radio.stats[u'rx_data_tx_ack'],
+                    u'rx_data': self.mote.radio.stats[u'rx_data'],
+                    u'sleep': self.mote.radio.stats[u'sleep']
                 }
             )
             self.mote.rpl.start()

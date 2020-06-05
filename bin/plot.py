@@ -19,8 +19,11 @@ import numpy as np
 
 # third party
 import matplotlib
+from matplotlib.ticker import MaxNLocator
+
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import seaborn as sns  # NPEB_modif
 
 # ============================ defines ========================================
 
@@ -31,7 +34,9 @@ KPIS = [
     'lifetime_AA_years',
     'sync_time_s',
     'join_time_s',
-    'upstream_num_lost'
+    'upstream_num_lost',
+    'first_hop',  #NPEB_modif
+    'charge_joined'
 ]
 
 # ============================ main ===========================================
@@ -69,6 +74,10 @@ def main(options):
         try:
             if key in ['lifetime_AA_years', 'latencies']:
                 plot_cdf(data, key, subfolder)
+            elif key == 'first_hop':  # NPEB_modif
+                plot_histogram_hops(data, subfolder)
+            elif key == 'charge_joined': # NPEB_modif
+                plot_histogram_charge_joined(data, subfolder)
             else:
                 plot_box(data, key, subfolder)
 
@@ -77,6 +86,44 @@ def main(options):
     print("Plots are saved in the {0} folder.".format(subfolder))
 
 # =========================== helpers =========================================
+
+
+#NPEB_modif
+def plot_histogram_hops(data, subfolder):
+    for k, values in data.items():
+        ax = sns.distplot(values, kde=False, hist_kws={"align": 'mid'})
+        ax.set_title("Distribution of number of hops for the first data traffic of each node")
+        ax.minorticks_on()
+        # y axis
+        ax.set_ylabel("Number of joined nodes")
+        ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+        ax.grid(axis="y")
+        # x axis
+        ax.set_xticks(list(set(values)))
+        ax.set_xlim(left=min(values)-0.5, right=max(values)+0.5)
+        ax.xaxis.set_tick_params(which='minor', bottom=False)
+
+        savefig(subfolder, "firsthop" + ".hist")
+        plt.clf()
+
+
+#NPEB_modif
+def plot_histogram_charge_joined(data, subfolder):
+    for k, values in data.items():
+        values = map(lambda microC: microC/1000, values)
+        ax = sns.distplot(values, bins=20, kde=False, hist_kws={"align": 'mid'}, rug=True)
+        ax.set_title("Distribution of used charge values at joining achievement")
+        ax.minorticks_on()
+        # y axis
+        ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+        ax.yaxis.set_tick_params(which='minor', bottom=False)
+        ax.grid(axis="y")
+        # x axis
+        ax.set_xlabel("Charge value (mC)")
+
+        savefig(subfolder, "chargejoined" + ".hist")
+        plt.clf()
+
 
 def plot_cdf(data, key, subfolder):
     for k, values in data.items():

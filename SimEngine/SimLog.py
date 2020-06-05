@@ -47,7 +47,8 @@ LOG_APP_RX                        = {u'type': u'app.rx',                    u'ke
 # === secjoin
 LOG_SECJOIN_TX                    = {u'type': u'secjoin.tx',                u'keys': [u'_mote_id']}
 LOG_SECJOIN_RX                    = {u'type': u'secjoin.rx',                u'keys': [u'_mote_id']}
-LOG_SECJOIN_JOINED                = {u'type': u'secjoin.joined',            u'keys': [u'_mote_id']}
+# NPEB_modif : get charge at joining
+LOG_SECJOIN_JOINED                = {u'type': u'secjoin.joined',            u'keys': [u'_mote_id', u'idle_listen', u'tx_data_rx_ack', u'tx_data', u'rx_data_tx_ack', u'rx_data', u'sleep']}
 LOG_SECJOIN_UNJOINED              = {u'type': u'secjoin.unjoined',          u'keys': [u'_mote_id']}
 LOG_SECJOIN_FAILED                = {u'type': u'secjoin.failed',            u'keys': [u'_mote_id']}
 

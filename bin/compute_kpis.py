@@ -56,6 +56,7 @@ def init_mote():
         'charge': None,
         'lifetime_AA_years': None,
         'avg_current_uA': None,
+        'charge_joined': None
     }
 
 # =========================== KPIs ============================================
@@ -118,6 +119,15 @@ def kpis_all(inputfile):
             assert allstats[run_id][mote_id]['sync_asn'] is not None
             allstats[run_id][mote_id]['join_asn']  = asn
             allstats[run_id][mote_id]['join_time_s'] = asn*file_settings['tsch_slotDuration']
+            # NPEB_modif
+            charge =  logline['idle_listen'] * d.CHARGE_IdleListen_uC
+            charge += logline['tx_data_rx_ack'] * d.CHARGE_TxDataRxAck_uC
+            charge += logline['rx_data_tx_ack'] * d.CHARGE_RxDataTxAck_uC
+            charge += logline['tx_data'] * d.CHARGE_TxData_uC
+            charge += logline['rx_data'] * d.CHARGE_RxData_uC
+            charge += logline['sleep'] * d.CHARGE_Sleep_uC
+            if allstats[run_id][mote_id]['charge_joined'] is None:
+                allstats[run_id][mote_id]['charge_joined'] = charge
 
         elif logline['_type'] == SimLog.LOG_APP_TX['type']:
             # packet transmission
@@ -211,6 +221,8 @@ def kpis_all(inputfile):
                         motestats['latency_max_s'] = max(motestats['latencies'])
                         motestats['upstream_reliability'] = motestats['upstream_num_rx']/float(motestats['upstream_num_tx'])
                         motestats['avg_hops'] = sum(motestats['hops'])/float(len(motestats['hops']))
+                        motestats['first_hop'] = motestats['hops'][0]  # NPEB_modif
+
 
     # === network stats
     for (run_id, per_mote_stats) in list(allstats.items()):
@@ -394,7 +406,7 @@ def kpis_all(inputfile):
                 del motestats['sync_asn']
             if 'charge_asn' in motestats:
                 del motestats['charge_asn']
-                del motestats['charge']
+    #             del motestats['charge'] NPEB_modif
             if 'join_asn' in motestats:
                 del motestats['upstream_pkts']
                 del motestats['hops']
