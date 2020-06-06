@@ -30,7 +30,7 @@ import SimEngine
 # =========================== body ============================================
 
 # TODO : move constants on the right place of code
-NPEB_ANNOUNCE_MIN_CELL = False
+NPEB_ANNOUNCE_MIN_CELL = True
 
 NPEB_MIN_PDR_UNDERGO_SYNCHRO = 0.6
 NPEB_MAX_JM_UNDERGO_SYNCHRO = 7
@@ -42,7 +42,7 @@ NPEB_JM_THRESH_NBR_CYCLES = 10
 NPEB_NON_ROOT_MIN_NBR_CYCLES = 2
 NPEB_MAX_NEIGHBORS_ANNOUNCED = 3
 
-DELAY_LOG_AFTER_EB = 120
+DELAY_LOG_AFTER_EB = 200  # -> almost 200 cycles (202 sec with dflt slotframe)s
 
 
 class Tsch(object):

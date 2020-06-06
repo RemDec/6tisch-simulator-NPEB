@@ -10,7 +10,7 @@
         },
         "regular": {
             "exec_numSlotframesPerRun":                    null,
-            "exec_minutesPerRun":                          20,
+            "exec_minutesPerRun":                          55,
             "exec_randomSeed":                             "runcontext",
 
             "secjoin_enabled":                             true,

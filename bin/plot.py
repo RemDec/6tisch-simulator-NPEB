@@ -37,12 +37,12 @@ KPIS = [
     'sync_time_s',
     'join_time_s',
     'upstream_num_lost',
-    'first_hop',  # vv NPEB_modif vv
-    'joinRPL_time_s',
+    'joinRPL_time_s', # vv NPEB_modif vv
     'charge_synched',
     'charge_joined',
     'charge_joinedRPL',
-    'charge_afterEB'
+    'charge_afterEB',
+    'first_hop'
 ]
 
 pretty_names = {
@@ -159,8 +159,9 @@ def plot_phase_times_boxplots(phase_times, global_stats, subfolder):
 
     df = pd.DataFrame(data)
     stats_join_steps = df.groupby('phase').describe().to_string()
-    stats_write = "--- Time elapsed at steps of join process - " + str_global_stats(global_stats) + '\n' +\
-                  stats_join_steps + '\n\n'
+    stats_convergence = pd.Series(conv_times).describe().to_string()
+    stats_write = "==== Time elapsed at steps of join process - " + str_global_stats(global_stats) + '\n' +\
+                  stats_join_steps + '\n\n--- With convergence times stats\n' + stats_convergence + '\n\n\n'
     write_additional_stats(subfolder, stats_write)
     ax = sns.boxplot(y='phase', x='value', data=data, orient='h', linewidth=1,
                      order=[labels[t] for t in stat_names[::-1]],
@@ -189,8 +190,8 @@ def plot_phase_charges_boxplots(phase_charges, global_stats, subfolder):
 
     df = pd.DataFrame(data)
     stats_join_steps = df.groupby('phase').describe().to_string()
-    stats_write = "--- Charge consumed at steps of join process - " + str_global_stats(global_stats) + '\n' +\
-                  stats_join_steps + '\n\n'
+    stats_write = "==== Charge consumed at steps of join process - " + str_global_stats(global_stats) + '\n' +\
+                  stats_join_steps + '\n\n\n'
     write_additional_stats(subfolder, stats_write)
     ax = sns.boxplot(y='phase', x='value', data=data, orient='h', linewidth=1,
                      palette=['Tomato', 'OrangeRed', 'Orange', 'Gold'],
