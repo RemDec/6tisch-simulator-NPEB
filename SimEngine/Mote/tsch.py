@@ -30,6 +30,8 @@ import SimEngine
 # =========================== body ============================================
 
 # TODO : move constants on the right place of code
+NPEB_ANNOUNCE_MIN_CELL = False
+
 NPEB_MIN_PDR_UNDERGO_SYNCHRO = 0.6
 NPEB_MAX_JM_UNDERGO_SYNCHRO = 7
 NPEB_MAX_NEIGHBORS_TO_LISTEN = 3
@@ -659,7 +661,7 @@ class Tsch(object):
                 if self.mote.clear_to_send_EBs_DATA():
                     if self._decided_to_send_eb():
                         # normal EB sent with a probability depending neighbours
-                        packet_to_send = self._create_EB()
+                        packet_to_send = self._create_NPEB() if NPEB_ANNOUNCE_MIN_CELL else self._create_EB()
                 else:
                     packet_to_send = None
             else:

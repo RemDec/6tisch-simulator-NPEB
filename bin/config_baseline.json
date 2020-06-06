@@ -1,8 +1,8 @@
 {
     "version":                                             0,
     "execution": {
-        "numCPUs":                                         1,
-        "numRuns":                                         1
+        "numCPUs":                                         -1,
+        "numRuns":                                         10
     },
     "settings": {
         "combination": {
@@ -11,7 +11,7 @@
         "regular": {
             "exec_numSlotframesPerRun":                    500,
             "exec_minutesPerRun":                          null,
-            "exec_randomSeed":                             123456,
+            "exec_randomSeed":                             "runcontext",
 
             "secjoin_enabled":                             true,
 

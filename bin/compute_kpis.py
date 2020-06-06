@@ -79,7 +79,7 @@ def compute_charge(logline_dict):
 def kpis_all(inputfile):
 
     allstats = {} # indexed by run_id, mote_id
-    netw_convergence_time = None
+    convergence_times = {}
 
     file_settings = json.loads(inputfile.readline())  # first line contains settings
 
@@ -236,7 +236,7 @@ def kpis_all(inputfile):
             allstats[run_id][mote_id]['charge']     = charge
 
         elif logline['_type'] == SimLog.LOG_SECJOIN_ALL_JOINED['type']:
-            netw_convergence_time = asn * file_settings['tsch_slotDuration']
+            convergence_times[run_id] = asn * file_settings['tsch_slotDuration']
 
     # === compute advanced motestats
 
@@ -322,8 +322,9 @@ def kpis_all(inputfile):
 
         #-- save stats
 
+        convergence_time = convergence_times.get(run_id)
         allstats[run_id]['global-stats'] = {
-            'convergence_time': netw_convergence_time,
+            'convergence_time': 'N/A' if convergence_time is None else convergence_time,
             'e2e-upstream-delivery': [
                 {
                     'name': 'E2E Upstream Delivery Ratio',

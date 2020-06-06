@@ -393,6 +393,13 @@ class SimEngine(DiscreteEventEngine):
             md5 = hashlib.md5()
             md5.update(u'-'.join(context).encode('utf-8'))
             self.random_seed = int(md5.hexdigest(), 16) % sys.maxsize
+        elif self.settings.exec_randomSeed == u'runcontext':
+            # with context for exec_randomSeed, an MD5 value of
+            # 'startTime-hostname-run_id' is used for a random seed
+            context = (platform.uname()[1], str(self.run_id))
+            md5 = hashlib.md5()
+            md5.update(u'-'.join(context).encode('utf-8'))
+            self.random_seed = int(md5.hexdigest(), 16) % sys.maxsize
         else:
             assert isinstance(self.settings.exec_randomSeed, int)
             self.random_seed = self.settings.exec_randomSeed
