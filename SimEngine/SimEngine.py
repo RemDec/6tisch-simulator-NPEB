@@ -204,6 +204,19 @@ class DiscreteEventEngine(threading.Thread):
 
     #======================== public ==========================================
 
+    def is_allMotesJoined(self):
+        """ Returns True if all motes joined the network. """
+        joined = filter(lambda mote : mote.secjoin.getIsJoined(), self.motes)
+        return len(joined) == len(self.motes)
+
+    def noticeMoteJoin(self):
+        """ React when a node join the network. """
+
+        if self.is_allMotesJoined():
+            # Log that all motes joined
+            # (do that after enabling the log)
+            self.log(SimLog.LOG_SECJOIN_ALL_JOINED, {})
+
     # === getters/setters
 
     def getAsn(self):

@@ -25,6 +25,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns  # NPEB_modif
 import pandas as pd
+from SimEngine.Mote.tsch import DELAY_LOG_AFTER_EB
 
 # ============================ defines ========================================
 
@@ -44,6 +45,22 @@ KPIS = [
     'charge_afterEB'
 ]
 
+pretty_names = {
+    'latency_max_s': "Maximum latency (s)",
+    'latency_avg_s': "Average latency (s)",
+    'latencies': "Latencies (s)",
+    'lifetime_AA_years': "Estimated lifetime powered by AA battery (year)",
+    'sync_time_s': "Synchronization time (s)",
+    'join_time_s': "Join time (s)",
+    'upstream_num_lost': "Number of upstream packet losses",
+    'first_hop': "Number of hops for first packet",
+    'joinRPL_time_s': "Time to join RPL topology (s)",
+    'charge_synched': "Charge consumed until synchronized (uC)",
+    'charge_joined': "Charge consumed until joined (uC)",
+    'charge_joinedRPL': "Charge consumed until joined RPL topology (uC)",
+    'charge_afterEB': "Charge consumed until %d s after allowed to send EBs (uC)" % (DELAY_LOG_AFTER_EB,)
+}
+
 # ============================ main ===========================================
 
 def main(options):
@@ -58,6 +75,7 @@ def main(options):
     subfolder = max(subfolders, key=os.path.getmtime)
 
     phases_stats = {'times': {}, 'charges': {}}
+    global_stats = {'nbr_motes': None, 'nbr_runs': None, 'convergence_times': []}
 
     for key in options.kpis:
         # load data
@@ -72,11 +90,21 @@ def main(options):
                 data[curr_combination] = []
 
                 # fill data list
+                nbr_runs = 0
+                conv_times = []
                 for run in kpis.values():
+                    nbr_runs += 1
+                    conv_times.append(run['global-stats']['convergence_time'])
+                    nbr_motes = 1  # Root is excluded from logs, add it artificially
                     for mote in run.values():
                         if key in mote:
+                            nbr_motes += 1
                             if mote[key] is not None:
                                 data[curr_combination].append(mote[key])
+                global_stats['nbr_runs'] = nbr_runs
+                global_stats['nbr_motes'] = nbr_motes
+                global_stats['convergence_times'] = conv_times
+
         if key in ['sync_time_s', 'join_time_s', 'joinRPL_time_s']:
             phases_stats['times'][key] = data[data.keys()[0]]
         elif key in ['charge_synched', 'charge_joined', 'charge_joinedRPL', 'charge_afterEB']:
@@ -84,23 +112,29 @@ def main(options):
         # plot
         try:
             if key in ['lifetime_AA_years', 'latencies']:
-                plot_cdf(data, key, subfolder)
+                plot_cdf(data, key, global_stats, subfolder)
             elif key == 'first_hop':  # NPEB_modif
-                plot_histogram_hops(data, subfolder)
+                plot_histogram_hops(data, global_stats, subfolder)
             elif key == 'charge_joined': # NPEB_modif
-                plot_histogram_charge_joined(data, subfolder)
+                plot_histogram_charge_joined(data, global_stats, subfolder)
             else:
-                plot_box(data, key, subfolder)
+                plot_box(data, key, global_stats,subfolder)
 
         except TypeError as e:
             print("Cannot create a plot for {0}: {1}.".format(key, e))
-    plot_phase_times_boxplots(phases_stats['times'], subfolder)
-    plot_phase_charges_boxplots(phases_stats['charges'], subfolder)
+    plot_phase_times_boxplots(phases_stats['times'], global_stats, subfolder)
+    plot_phase_charges_boxplots(phases_stats['charges'], global_stats, subfolder)
     print("Plots are saved in the {0} folder.".format(subfolder))
 
 # =========================== helpers =========================================
 
-def plot_phase_times_boxplots(phase_times, subfolder):
+def str_global_stats(global_stats):
+    return "Number of nodes : %d   Number of runs : %d" % (global_stats['nbr_motes'], global_stats['nbr_runs'])
+
+
+def plot_phase_times_boxplots(phase_times, global_stats, subfolder):
+    conv_times = global_stats['convergence_times']
+    mean_conv_time = float(sum(conv_times)) / len(conv_times)
     stat_names = ['sync_time_s', 'join_time_s', 'joinRPL_time_s']
     labels = {stat_names[0]: 'Synchro',
               stat_names[1]: 'SecJoin',
@@ -115,16 +149,17 @@ def plot_phase_times_boxplots(phase_times, subfolder):
                      order=[labels[t] for t in stat_names[::-1]],
                      palette=['OrangeRed', 'Orange', 'Gold'],
                      notch=False, meanline=True, showmeans=True)
-    ax.set_title("Time elapsed at steps of join process for all nodes")
+    ax.set_title("Time elapsed at steps of join process for all nodes\n"+str_global_stats(global_stats))
     # x axis
     ax.set_xlabel("Time (s)")
+    # Set a vertical line for mean convergence time
+    ax.axvline(mean_conv_time, label="Mean convergence times")
 
     savefig(subfolder, "phase_times")
     plt.clf()
 
 
-def plot_phase_charges_boxplots(phase_charges, subfolder):
-    from SimEngine.Mote.tsch import DELAY_LOG_AFTER_EB
+def plot_phase_charges_boxplots(phase_charges, global_stats, subfolder):
     stat_names = ['charge_synched', 'charge_joined', 'charge_joinedRPL', 'charge_afterEB']
     labels = {stat_names[0]: 'Synchro',
               stat_names[1]: 'SecJoin',
@@ -140,7 +175,7 @@ def plot_phase_charges_boxplots(phase_charges, subfolder):
                      palette=['Tomato', 'OrangeRed', 'Orange', 'Gold'],
                      order=[labels[t] for t in stat_names[::-1]],
                      notch=False, meanline=True, showmeans=True)
-    ax.set_title("Charge consumed at steps of join process for all nodes")
+    ax.set_title("Charge consumed at steps of join process for all nodes\n"+str_global_stats(global_stats))
     # x axis
     ax.set_xlabel("Charge (mC)")
 
@@ -149,10 +184,10 @@ def plot_phase_charges_boxplots(phase_charges, subfolder):
 
 
 #NPEB_modif
-def plot_histogram_hops(data, subfolder):
+def plot_histogram_hops(data, global_stats, subfolder):
     for k, values in data.items():
         ax = sns.distplot(values, kde=False, hist_kws={"align": 'mid'})
-        ax.set_title("Distribution of number of hops for the first data traffic of each node")
+        ax.set_title("Distribution of number of hops for the first data traffic of each node\n"+str_global_stats(global_stats))
         ax.minorticks_on()
         # y axis
         ax.set_ylabel("Number of joined nodes")
@@ -169,11 +204,11 @@ def plot_histogram_hops(data, subfolder):
 
 
 #NPEB_modif
-def plot_histogram_charge_joined(data, subfolder):
+def plot_histogram_charge_joined(data, global_stats, subfolder):
     for k, values in data.items():
         values = map(lambda microC: microC/1000, values)
         ax = sns.distplot(values, bins=20, kde=False, hist_kws={"align": 'mid'}, rug=True)
-        ax.set_title("Distribution of consumed charge values at joining achievement")
+        ax.set_title("Distribution of consumed charge values at joining achievement\n"+str_global_stats(global_stats))
         ax.minorticks_on()
         # y axis
         ax.yaxis.set_major_locator(MaxNLocator(integer=True))
@@ -186,7 +221,7 @@ def plot_histogram_charge_joined(data, subfolder):
         plt.clf()
 
 
-def plot_cdf(data, key, subfolder):
+def plot_cdf(data, key, global_stats, subfolder):
     for k, values in data.items():
         # convert list of list to list
         if type(values[0]) == list:
@@ -198,18 +233,22 @@ def plot_cdf(data, key, subfolder):
         yvals = np.arange(len(sorted_data)) / float(len(sorted_data) - 1)
         plt.plot(sorted_data, yvals, label=k)
 
-    plt.xlabel(key)
+    plt.xlabel(pretty_names[key])
     plt.ylabel("CDF")
-    plt.legend()
+    plt.grid(axis='y')
+    plt.title("CDF for the KPI : " + pretty_names[key] + "\n" + str_global_stats(global_stats))
     savefig(subfolder, key + ".cdf")
     plt.clf()
 
-def plot_box(data, key, subfolder):
+def plot_box(data, key, global_stats, subfolder):
+    name = "Means on %d runs" % (global_stats['nbr_runs'],)
     plt.boxplot(list(data.values()))
-    plt.xticks(list(range(1, len(data) + 1)), list(data.keys()))
-    plt.ylabel(key)
+    plt.xticks(list(range(1, len(data) + 1)), [name]*len(data))
+    plt.ylabel(pretty_names[key])
+    plt.title("Distribution for the KPI : " + pretty_names[key] + '\n' + str_global_stats(global_stats))
     savefig(subfolder, key)
     plt.clf()
+
 
 def savefig(output_folder, output_name, output_format="png"):
     # check if output folder exists and create it if not

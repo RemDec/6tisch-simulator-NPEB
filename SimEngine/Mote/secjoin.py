@@ -84,6 +84,8 @@ class SecJoin(object):
                 }
             )
         self._isJoined = value
+        if value:
+            self.engine.noticeMoteJoin()
 
     def getIsJoined(self):
         return self._isJoined
