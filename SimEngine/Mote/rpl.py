@@ -354,19 +354,20 @@ class Rpl(object):
         self.trickle_timer.start()
         self.trickle_timer.reset()
         self.stop_dis_timer()
-        # NPEB_modif : get charge at joining
-        self.log(
-            SimEngine.SimLog.LOG_RPL_JOINED,
-            {
-                u'_mote_id': self.mote.id,
-                u'idle_listen': self.mote.radio.stats[u'idle_listen'],
-                u'tx_data_rx_ack': self.mote.radio.stats[u'tx_data_rx_ack'],
-                u'tx_data': self.mote.radio.stats[u'tx_data'],
-                u'rx_data_tx_ack': self.mote.radio.stats[u'rx_data_tx_ack'],
-                u'rx_data': self.mote.radio.stats[u'rx_data'],
-                u'sleep': self.mote.radio.stats[u'sleep']
-            }
-        )
+        if dodagId is not None:
+            # NPEB_modif : get charge at joining (only on DIO reception !)
+            self.log(
+                SimEngine.SimLog.LOG_RPL_JOINED,
+                {
+                    u'_mote_id': self.mote.id,
+                    u'idle_listen': self.mote.radio.stats[u'idle_listen'],
+                    u'tx_data_rx_ack': self.mote.radio.stats[u'tx_data_rx_ack'],
+                    u'tx_data': self.mote.radio.stats[u'tx_data'],
+                    u'rx_data_tx_ack': self.mote.radio.stats[u'rx_data_tx_ack'],
+                    u'rx_data': self.mote.radio.stats[u'rx_data'],
+                    u'sleep': self.mote.radio.stats[u'sleep']
+                }
+            )
 
     # === DAO
 

@@ -118,7 +118,8 @@ def kpis_all(inputfile):
                 continue
 
             allstats[run_id][mote_id]['sync_asn']  = asn
-            allstats[run_id][mote_id]['sync_time_s'] = asn*file_settings['tsch_slotDuration']
+            if allstats[run_id][mote_id]['sync_time_s'] is None:  # log only the first
+                allstats[run_id][mote_id]['sync_time_s'] = asn*file_settings['tsch_slotDuration']
             # NPEB_modif
             charge = compute_charge(logline)
             if allstats[run_id][mote_id]['charge_synched'] is None:
@@ -137,7 +138,8 @@ def kpis_all(inputfile):
             # populate
             assert allstats[run_id][mote_id]['sync_asn'] is not None
             allstats[run_id][mote_id]['join_asn']  = asn
-            allstats[run_id][mote_id]['join_time_s'] = asn*file_settings['tsch_slotDuration']
+            if allstats[run_id][mote_id]['join_time_s'] is None:  # log only the first
+                allstats[run_id][mote_id]['join_time_s'] = asn*file_settings['tsch_slotDuration']
             # NPEB_modif
             charge =  compute_charge(logline)
             if allstats[run_id][mote_id]['charge_joined'] is None:

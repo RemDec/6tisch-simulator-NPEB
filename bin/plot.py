@@ -19,7 +19,7 @@ import numpy as np
 
 # third party
 import matplotlib
-from matplotlib.ticker import MaxNLocator
+from matplotlib.ticker import MaxNLocator, AutoMinorLocator
 
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -170,6 +170,8 @@ def plot_phase_times_boxplots(phase_times, global_stats, subfolder):
     ax.set_title("Time elapsed at steps of join process for all nodes\n"+str_global_stats(global_stats))
     # x axis
     ax.set_xlabel("Time (s)")
+    ax.xaxis.set_minor_locator(AutoMinorLocator(5))
+    ax.xaxis.set_tick_params(which='minor', bottom=True)
     # Set a vertical line for mean convergence time
     ax.axvline(mean_conv_time, label="Mean convergence times")
 
@@ -200,6 +202,8 @@ def plot_phase_charges_boxplots(phase_charges, global_stats, subfolder):
     ax.set_title("Charge consumed at steps of join process for all nodes\n"+str_global_stats(global_stats))
     # x axis
     ax.set_xlabel("Charge (mC)")
+    ax.xaxis.set_minor_locator(AutoMinorLocator(5))
+    ax.xaxis.set_tick_params(which='minor', bottom=True)
 
     savefig(subfolder, "phase_charges")
     plt.clf()
