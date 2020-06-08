@@ -250,6 +250,8 @@ class SchedulingFunctionMSF(SchedulingFunctionBase):
                     self.SLOTFRAME_HANDLE_AUTONOMOUS_CELLS
                 )
             ):
+            if received_packet == {}: #  modif_NPEB temporary fix
+                return
             if (
                 received_packet is None
                 or
