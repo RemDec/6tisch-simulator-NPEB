@@ -238,7 +238,8 @@ def kpis_all(inputfile):
             allstats[run_id][mote_id]['charge']     = charge
 
         elif logline['_type'] == SimLog.LOG_SECJOIN_ALL_JOINED['type']:
-            convergence_times[run_id] = asn * file_settings['tsch_slotDuration']
+            if convergence_times.get(run_id) is None:
+                convergence_times[run_id] = asn * file_settings['tsch_slotDuration']
 
     # === compute advanced motestats
 

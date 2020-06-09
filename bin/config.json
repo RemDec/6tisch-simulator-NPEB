@@ -2,7 +2,7 @@
     "version":                                             0,
     "execution": {
         "numCPUs":                                         -1,
-        "numRuns":                                         20
+        "numRuns":                                         10
     },
     "settings": {
         "combination": {
