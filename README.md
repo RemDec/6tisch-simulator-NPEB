@@ -1,3 +1,7 @@
+# NPEB method
+
+The NPEB method has been designed in the context of the Master thesis presented [here](https://github.com/RemDec/memoire6TiSCH) (get details about NPEB from the Implementation section). To highlight NPEB's performance gains, the official 6TiSCH simulator has been modified in-code to implement the NPEB behaviour, and some relevant KPIs have been added to the original ones.
+
 # The 6TiSCH Simulator
 
 Branch    | Build Status
